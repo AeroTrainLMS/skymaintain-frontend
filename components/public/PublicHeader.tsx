@@ -3,14 +3,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function PublicHeader() {
     const router = useRouter();
+    const pathname = usePathname();
     const { isAuthenticated, logout, isLoading } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
+
+    // Hide platform-access links on the 2FA page — user hasn't verified yet
+    const on2faPage = pathname === "/2fa";
 
     function handleLogout() {
         logout();
@@ -44,9 +48,10 @@ export default function PublicHeader() {
                     ))}
 
                     {/* Auth-aware Sign In / Log Out button */}
+                    {/* Hide platform links on /2fa — user has not completed verification yet */}
                     {isLoading ? (
                         <span className="text-sm text-slate-400">...</span>
-                    ) : isAuthenticated ? (
+                    ) : isAuthenticated && !on2faPage ? (
                         <>
                             <Link
                                 href="/app/welcome"
@@ -62,27 +67,27 @@ export default function PublicHeader() {
                                 Log Out
                             </button>
                         </>
-                    ) : (
+                    ) : !isAuthenticated ? (
                         <Link href="/signin" className="text-sm text-slate-600 hover:text-slate-900">
                             Sign In
                         </Link>
-                    )}
+                    ) : null}
 
-                    {isAuthenticated ? (
+                    {isAuthenticated && !on2faPage ? (
                         <Link
                             href="/app/welcome"
                             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
                         >
                             Open Platform
                         </Link>
-                    ) : (
+                    ) : !isAuthenticated ? (
                         <Link
                             href="/#signup"
                             className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white"
                         >
                             Start Free Trial
                         </Link>
-                    )}
+                    ) : null}
                 </nav>
 
                 {/* Mobile hamburger */}
@@ -113,7 +118,7 @@ export default function PublicHeader() {
                         <div className="my-3 border-t border-slate-100" />
                         {isLoading ? (
                             <span className="px-3 text-sm text-slate-400">...</span>
-                        ) : isAuthenticated ? (
+                        ) : isAuthenticated && !on2faPage ? (
                             <>
                                 <Link
                                     href="/app/welcome"
