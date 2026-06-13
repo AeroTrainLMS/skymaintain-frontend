@@ -242,20 +242,32 @@ export async function POST(req: NextRequest) {
     let deliveryMethod: "api" | "supabase" | null = null;
 
     if (body.method === "email") {
-        // 1. Try Resend (best deliverability)
-        try {
-            const result = await sendViaResend(code, body.destination);
-            if (result) {
-                console.info("2FA email sent via Resend", { destination: body.destination, id: result.messageId });
-                deliveryMethod = "api";
-            } else {
-                throw new Error("RESEND_API_KEY not configured");
+        // 1. Try Resend (best deliverability) - FAIL-CLOSED
+        // If Resend is configured but fails, return error immediately.
+        // Do NOT fall back to other methods to prevent false success responses.
+        const hasResendKey = !!process.env.RESEND_API_KEY;
+        if (hasResendKey) {
+            try {
+                const result = await sendViaResend(code, body.destination);
+                if (result) {
+                    console.info("2FA email sent via Resend", { destination: body.destination, id: result.messageId });
+                    deliveryMethod = "api";
+                } else {
+                    throw new Error("RESEND_API_KEY not configured");
+                }
+            } catch (resendErr) {
+                sendError = resendErr instanceof Error ? resendErr.message : "Email delivery failed";
+                console.error("Resend email failed:", sendError);
+                // FAIL-CLOSED: Return error instead of falling back to Supabase
+                // This ensures false "code sent" responses don't grant access
+                return NextResponse.json(
+                    { ok: false, error: "Unable to send verification code. Please try again or contact support." },
+                    { status: 503 }
+                );
             }
-        } catch (resendErr) {
-            console.warn("Resend failed, trying SMTP:", resendErr instanceof Error ? resendErr.message : resendErr);
+        } else {
+            // If Resend isn't configured, try SMTP as primary
             provider = "smtp";
-
-            // 2. Try SMTP fallback
             if (isSmtpConfigured()) {
                 try {
                     await sendViaSmtp(code, body.destination);
@@ -263,42 +275,43 @@ export async function POST(req: NextRequest) {
                     deliveryMethod = "api";
                 } catch (smtpErr) {
                     sendError = smtpErr instanceof Error ? smtpErr.message : "SMTP delivery failed";
-                    console.error("SMTP also failed:", sendError);
+                    console.error("SMTP delivery failed:", sendError);
+                    // FAIL-CLOSED: Return error instead of falling back
+                    return NextResponse.json(
+                        { ok: false, error: "Unable to send verification code. Please try again or contact support." },
+                        { status: 503 }
+                    );
                 }
             } else {
-                sendError = "Primary email services not configured.";
-            }
-        }
-
-        // 3. If both Resend and SMTP failed, try Supabase Admin OTP
-        if (!deliveryMethod && sendError) {
-            console.warn("Resend + SMTP failed, trying Supabase Admin OTP...");
-            try {
-                const supabaseOk = await sendViaSupabaseAdmin(body.destination);
-                if (supabaseOk) {
-                    provider = "supabase";
-                    deliveryMethod = "supabase";
-                    sendError = null; // Clear the error — delivery succeeded
-                    console.info("2FA email sent via Supabase", { destination: body.destination });
-                }
-            } catch (supaErr) {
-                console.error("Supabase OTP also failed:", supaErr instanceof Error ? supaErr.message : supaErr);
+                // Neither Resend nor SMTP configured
+                sendError = "Email services not configured.";
+                console.error(sendError);
+                return NextResponse.json(
+                    { ok: false, error: "Email service unavailable. Please contact support." },
+                    { status: 503 }
+                );
             }
         }
     } else {
-        // SMS
+        // SMS - FAIL-CLOSED
         provider = "sms";
         try {
             await sendSms(code, body.destination);
         } catch (smsErr) {
             sendError = smsErr instanceof Error ? smsErr.message : "SMS delivery failed";
+            console.error("SMS delivery failed:", sendError);
+            // FAIL-CLOSED: Return error on SMS failure
+            return NextResponse.json(
+                { ok: false, error: "Unable to send verification code. Please try again or contact support." },
+                { status: 503 }
+            );
         }
     }
 
     if (sendError) {
         return NextResponse.json(
-            { ok: false, error: sendError + " Check your spam folder or contact support." },
-            { status: 500 }
+            { ok: false, error: "Unable to send verification code. Please try again or contact support." },
+            { status: 503 }
         );
     }
 
