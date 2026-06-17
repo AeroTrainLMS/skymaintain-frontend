@@ -1,0 +1,44 @@
+name: Supabase Keep Warm
+
+on:
+    schedule:
+        # Runs every 3 days at 08:00 UTC — well within Supabase's 7-day pause window
+        - cron: "0 8 */3 * *"
+    workflow_dispatch: # Allow manual trigger any time
+
+jobs:
+    keep-warm:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+
+        steps:
+            - name: Ping Supabase REST API
+              env:
+                  SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+                  SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+              run: |
+                  set -euo pipefail
+
+                  if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+                    echo "::error::Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY secret"
+                    exit 1
+                  fi
+
+                  # Hit the Supabase REST health endpoint — this counts as activity
+                  # and resets the inactivity timer on the free-tier project.
+                  STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+                    --max-time 20 \
+                    -H "apikey: ${SUPABASE_ANON_KEY}" \
+                    -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+                    "${SUPABASE_URL}/rest/v1/?apikey=${SUPABASE_ANON_KEY}" \
+                    2>/dev/null || echo "000")
+
+                  echo "Supabase ping status: $STATUS"
+
+                  if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 500 ]; then
+                    echo "Supabase project is active and responding."
+                    exit 0
+                  fi
+
+                  echo "::error::Supabase ping failed with status $STATUS — project may be paused or unreachable."
+                  exit 1
