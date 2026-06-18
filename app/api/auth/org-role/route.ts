@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { requireSession } from "@/lib/apiAuth";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,10 @@ export const runtime = "nodejs";
  * Returns: { role: string, isFirstOrgUser: boolean }
  */
 export async function POST(request: NextRequest) {
+    // ── Auth enforcement ──
+    const session = requireSession(request);
+    if (session instanceof NextResponse) return session;
+
     try {
         const body = await request.json();
         const userId = (body.userId || "").trim();

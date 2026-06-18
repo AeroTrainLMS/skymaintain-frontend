@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { generateOtp, getOtpExpiry, signPayload } from "@/lib/twoFactor";
 import { checkRateLimit, getRateLimitHeaders, RATE_LIMITS } from "@/lib/rateLimit";
-import { supabaseServer } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
 
@@ -161,54 +160,6 @@ async function sendSms(code: string, destination: string) {
         const text = await response.text().catch(() => "");
         throw new Error(text || "Failed to send SMS.");
     }
-}
-
-/* ── Supabase Admin OTP fallback ───────────────────────────── */
-
-/**
- * Use the Supabase Admin API (service_role) to generate a magic link for
- * the user, then extract the OTP from the response. This bypasses the
- * client-side 60-second rate limit and uses Supabase's built-in email
- * delivery as a last-resort fallback.
- *
- * Returns true if Supabase sent the email, false otherwise.
- */
-async function sendViaSupabaseAdmin(destination: string): Promise<boolean> {
-    if (!supabaseServer) return false;
-
-    // Use signInWithOtp via the admin client — the service_role key
-    // bypasses per-user rate limits that plague client-side OTP sends.
-    // Note: this sends Supabase's OWN OTP email (not our branded one),
-    // but it's better than no email at all.
-    const { error } = await supabaseServer.auth.admin.generateLink({
-        type: "magiclink",
-        email: destination,
-    });
-
-    if (error) {
-        console.warn("Supabase Admin generateLink failed:", error.message);
-
-        // Fallback: try the standard signInWithOtp via the client
-        // (still server-side, but uses anon-level rate limiting)
-        const anonUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-        if (anonUrl && anonKey) {
-            const { createClient } = await import("@supabase/supabase-js");
-            const anonClient = createClient(anonUrl, anonKey, {
-                auth: { persistSession: false, autoRefreshToken: false },
-            });
-            const { error: otpError } = await anonClient.auth.signInWithOtp({
-                email: destination,
-                options: { shouldCreateUser: false },
-            });
-            if (!otpError) return true;
-            console.warn("Supabase anon signInWithOtp failed:", otpError.message);
-        }
-
-        return false;
-    }
-
-    return true;
 }
 
 /* ── POST handler ─────────────────────────────────────────── */

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession, isSuperAdmin } from "@/lib/apiAuth";
+import { requireSession } from "@/lib/apiAuth";
 import { normalizeRole } from "@/lib/auth/roles";
 
 const BACKEND_BASE = process.env.SKYMAINTAIN_BACKEND_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";

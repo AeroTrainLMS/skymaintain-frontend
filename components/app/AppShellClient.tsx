@@ -8,7 +8,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -110,8 +110,9 @@ export default function AppShellClient({ children }: AppShellClientProps) {
     const [aiOpen, setAiOpen] = useState(false);
 
     // Close sidebar by default on mobile screens
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setSidebarVisible(false);
         }
     }, []);
@@ -358,8 +359,9 @@ export default function AppShellClient({ children }: AppShellClientProps) {
     }, [pathname]);
 
     // Auto-close sidebar on navigation on mobile
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setSidebarVisible(false);
         }
     }, [pathname]);

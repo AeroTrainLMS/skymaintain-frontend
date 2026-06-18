@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "npm run typecheck && next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

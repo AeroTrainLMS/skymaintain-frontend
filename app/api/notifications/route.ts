@@ -1,7 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { fetchNotifications } from "@/lib/integrations/acms";
+import { requireSession } from "@/lib/apiAuth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+    // ── Auth enforcement ──
+    const session = requireSession(request);
+    if (session instanceof NextResponse) return session;
+
     try {
         const data = await fetchNotifications();
         return NextResponse.json(data, {

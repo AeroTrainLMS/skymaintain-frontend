@@ -49,3 +49,6 @@ next-env.d.ts
 public/uploads/demo/
 
 .env*.local
+
+.vercel
+.env*.local

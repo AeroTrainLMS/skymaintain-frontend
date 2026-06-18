@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireSession } from "@/lib/apiAuth";
 
 type Store = { events: Array<Record<string, unknown>> };
 const globalForDecisionEvents = globalThis as unknown as { __decisionEventStore?: Store };
@@ -13,7 +14,11 @@ function toCsv(events: Array<Record<string, unknown>>) {
     return [headers.join(","), ...rows].join("\n");
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+    // ── Auth enforcement ──
+    const session = requireSession(req);
+    if (session instanceof NextResponse) return session;
+
     const { searchParams } = new URL(req.url);
     const format = (searchParams.get("format") || "json").toLowerCase();
     const events = decisionEventStore.events;

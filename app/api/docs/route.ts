@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { requireSession } from "@/lib/apiAuth";
 
 type UploadedDoc = {
     filename: string;
@@ -21,6 +22,10 @@ type DocumentationPayload = {
 };
 
 export async function GET(request: NextRequest) {
+    // ── Auth enforcement ──
+    const session = requireSession(request);
+    if (session instanceof NextResponse) return session;
+
     try {
         const reg = request.nextUrl.searchParams.get("reg") || "";
 

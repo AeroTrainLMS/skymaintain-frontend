@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
+import { requireSession } from "@/lib/apiAuth";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,10 @@ type PortalBody = {
 };
 
 export async function POST(req: NextRequest) {
+    // ── Auth enforcement ──
+    const session = requireSession(req);
+    if (session instanceof NextResponse) return session;
+
     const stripe = getStripe();
 
     if (!stripe) {

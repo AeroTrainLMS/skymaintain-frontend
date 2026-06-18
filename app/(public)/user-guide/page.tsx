@@ -57,8 +57,11 @@ function renderMarkdown(md: string): string {
         .replace(/`(.+?)`/g, '<code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm font-mono text-slate-700">$1</code>')
         // Horizontal rule
         .replace(/^---$/gm, '<hr class="my-6 border-slate-200" />')
-        // Links
-        .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-blue-600 underline hover:text-blue-800" target="_blank" rel="noopener noreferrer">$1</a>');
+        // Links (sanitize href to reject javascript:/data: XSS)
+        .replace(/\[(.+?)\]\((.+?)\)/g, (_m: string, text: string, url: string) => {
+            const safeUrl = /^(https?:\/\/|mailto:|\/)/i.test(url) ? url : "#";
+            return `<a href="${safeUrl}" class="text-blue-600 underline hover:text-blue-800" target="_blank" rel="noopener noreferrer">${text}</a>`;
+        });
 
     // Tables
     html = html.replace(
