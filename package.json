@@ -19,7 +19,7 @@
     "@aws-sdk/s3-request-presigner": "^3.995.0",
     "@supabase/supabase-js": "^2.95.3",
     "lucide-react": "^0.563.0",
-    "next": "16.1.6",
+    "next": "16.2.9",
     "nodemailer": "^8.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -39,10 +39,18 @@
     "@types/react-dom": "^19",
     "audit-ci": "^7.1.0",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.2.9",
     "jsdom": "^28.1.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^3.2.1"
+    "vitest": "^3.2.6"
+  },
+  "overrides": {
+    "fast-xml-parser": "5.9.2",
+    "flatted": "3.4.2",
+    "picomatch": "4.0.4",
+    "undici": "7.24.8",
+    "vite": "7.3.5",
+    "ws": "8.21.0"
   }
 }
